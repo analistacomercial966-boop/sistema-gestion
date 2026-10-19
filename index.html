@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión Integrado</title>
+    <style>
+        :root {
+            --primary: #5833ff;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --border: #cbd5e1;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: var(--card);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 420px;
+            box-sizing: border-box;
+        }
+        .header-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        h2 { 
+            text-align: center; 
+            margin: 0; 
+            color: var(--primary); 
+            font-size: 24px;
+            width: 100%;
+        }
+        .btn-logout {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: #334155; }
+        input[type="text"], input[type="password"], select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 15px;
+            outline: none;
+        }
+        .buscar-cliente {
+            margin-bottom: 8px;
+            border: 2px solid #000000 !important;
+            background-color: #eff6ff;
+            padding-left: 12px !important;
+        }
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        select[size] {
+            height: 140px !important;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        .btn-clear {
+            background-color: #64748b;
+            margin-top: 8px;
+        }
+        .mensaje {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+<!-- PANTALLA 1: INICIO DE SESIÓN -->
+<div id="pantallaLogin" class="container">
+    <h2>Acceso al Sistema</h2>
+    <br>
+    <div class="form-group">
+        <label>Usuario / Correo</label>
+        <input type="text" id="usuarioLogin" placeholder="ejemplo@correo.com">
+    </div>
+    <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="passwordLogin" placeholder="••••••••">
+    </div>
+    <button type="button" onclick="intentarIngresar()">Ingresar al Sistema</button>
+    <div id="errorLogin" class="mensaje" style="color: red;"></div>
+</div>
+
+<!-- PANTALLA 2: PANEL DE OPERACIONES (OCULTO AL INICIO) -->
+<div id="pantallaPanel" class="container" style="display: none;">
+    <div class="header-panel">
+        <h2 style="color: #334155; text-align: left; font-size: 22px;">Acceso y Configuración</h2>
+        <button type="button" class="btn-logout" onclick="cerrarSesion()">Salir</button>
+    </div>
+    
+    <form id="formularioNegocio">
+        <div class="form-group">
+            <label>Tipo de Negocio</label>
+            <div class="radio-group">
+                <label class="radio-option">
+                    <input type="radio" name="tipo_negocio" value="Mercado" checked> Mercado
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="tipo_negocio" value="Bodega"> Bodega
+                </label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Asignar Cliente Fijo (Precargado)</label>
+            <input type="text" id="buscarCliente" class="buscar-cliente" placeholder="🔍 Escribe para buscar cliente..." oninput="filtrarClientes()">
+            
+            <select id="cliente" name="cliente_asignado" size="5">
+                <option value="Cliente 001 - Juan Pérez">Cliente 001 - Juan Pérez</option>
+                <option value="Cliente 002 - María Rosas">Cliente 002 - María Rosas</option>
+                <option value="Cliente 003 - Carlos Soto">Cliente 003 - Carlos Soto</option>
+                <option value="Cliente 004 - Ana Gómez">Cliente 004 - Ana Gómez</option>
+                <option value="Cliente 005 - Luis Mendoza">Cliente 005 - Luis Mendoza</option>
+                <option value="Cliente 006 - Elena Torres">Cliente 006 - Elena Torres</option>
+            </select>
+        </div>
+
+        <button type="submit">Guardar Registro en Excel</button>
+        <button type="button" class="btn-clear" onclick="limpiarBuscadorYLista()">Buscar Otro Cliente</button>
+        <div id="status" class="mensaje"></div>
+    </form>
+</div>
+
+<script>
+    let usuarioActivo = "";
+    
+    const listaClientes = document.getElementById('cliente');
+    const copiaClientes = Array.from(listaClientes.options);
+
+    // Evento para transferir el nombre seleccionado directamente al campo de búsqueda
+    listaClientes.addEventListener('change', function() {
+        if(this.value) {
+            document.getElementById('buscarCliente').value = this.value;
+        }
+    });
+
+    function intentarIngresar() {
+        const txtUser = document.getElementById('usuarioLogin').value.trim();
+        const txtPass = document.getElementById('passwordLogin').value.trim();
+        const mensajeError = document.getElementById('errorLogin');
+
+        if (txtUser === "admin@correo.com" && txtPass === "123456") {
+            usuarioActivo = txtUser;
+            mensajeError.innerText = "";
+            
+            document.getElementById('pantallaLogin').style.display = "none";
+            document.getElementById('pantallaPanel').style.display = "block";
+            
+            document.getElementById('usuarioLogin').value = "";
+            document.getElementById('passwordLogin').value = "";
+        } else {
+            mensajeError.innerText = "Usuario o contraseña incorrectos.";
+        }
+    }
+
+    function cerrarSesion() {
+        usuarioActivo = "";
+        document.getElementById('pantallaPanel').style.display = "none";
+        document.getElementById('pantallaLogin').style.display = "block";
+        limpiarBuscadorYLista();
+        document.getElementById('status').innerText = "";
+    }
+
+    function filtrarClientes() {
+        const busqueda = document.getElementById('buscarCliente').value.toLowerCase();
+        listaClientes.innerHTML = '';
+        copiaClientes.forEach(opcion => {
+            if (opcion.text.toLowerCase().includes(busqueda)) {
+                listaClientes.appendChild(opcion);
+            }
+        });
+    }
+
+    function limpiarBuscadorYLista() {
+        document.getElementById('buscarCliente').value = "";
+        listaClientes.selectedIndex = -1;
+        listaClientes.innerHTML = '';
+        copiaClientes.forEach(opcion => {
+            listaClientes.appendChild(opcion);
+        });
+    }
+
+    document.getElementById('formularioNegocio').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const statusDiv = document.getElementById('status');
+        
+        if (!listaClientes.value) {
+            statusDiv.style.color = "red";
+            statusDiv.innerText = "Por favor, selecciona un cliente de la lista.";
+            return;
+        }
+
+        statusDiv.style.color = "orange";
+        statusDiv.innerText = "Enviando a Excel...";
+
+        const formData = new FormData(e.target);
+        
+        // Estructura limpia compatible con columnas estándar de SheetDB
+        const datosParaExcel = {
+            Usuario: usuarioActivo, 
+            Negocio: formData.get('tipo_negocio'),
+            Cliente: formData.get('cliente_asignado'),
+            Fecha: new Date().toLocaleString()
+        };
+
+        try {
+            const urlAPI = 'https://sheetdb.io/api/v1/l9h7ddlpndgqv';
+            
+            const respuesta = await fetch(urlAPI, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    data: [datosParaExcel]
+                })
+            });
+
+            const resultado = await respuesta.json();
+
+            if (resultado.created === 1) {
+                statusDiv.style.color = "#22c55e";
+                statusDiv.innerText = "¡Guardado en Excel correctamente!";
+                limpiarBuscadorYLista();
+            } else {
+                statusDiv.style.color = "red";
+                statusDiv.innerText = "Error del servidor al intentar guardar.";
+            }
+
+        } catch (error) {
+            console.error("Error al guardar en Excel:", error);
+            statusDiv.style.color = "red";
+            statusDiv.innerText = "Hubo un fallo en la conexión al guardar.";
+        }
+    });
+</script>
+
+</body>
+</html>
